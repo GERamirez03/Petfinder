@@ -1,0 +1,17 @@
+{% extends 'base.html' %} 
+
+{% block title %} Pets! {% endblock %} 
+
+{% block content %} 
+
+<h2>Pets!</h2>
+
+{% for pet in pets %} 
+<div>
+    <b>{{ pet.name }}</b>
+    <img src="{{ pet.primary_photo_cropped.full }}" alt="Image of {{ pet.name }}">
+</div>
+
+{% endfor %} 
+
+{% endblock %}

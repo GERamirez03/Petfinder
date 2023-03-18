@@ -1,0 +1,13 @@
+{% extends 'base.html' %} 
+
+{% block title %} Home {% endblock %} 
+
+{% block content %} 
+<h2>Accessing Database...</h2>
+
+<p>Status Code: {{ status_code }}</p>
+<!-- <p>Text: {{text}}</p>
+<p>JSON: {{json}}</p> -->
+<p>Access Token: {{ json.access_token }}</p>
+
+{% endblock %} 

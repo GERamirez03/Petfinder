@@ -31,7 +31,7 @@ class User(db.Model):
     
     last_name = db.Column(db.String)
 
-    profile_image_url = db.Column(db.String,
+    profile_picture_url = db.Column(db.String,
                                   default="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNMw2X0QrpOWXaB-XTgu_fwKnrnLhJhSsh3GVZm0A&s")
     
     location = db.Column(db.String)
@@ -145,3 +145,10 @@ class Bookmark(db.Model):
     pet_id = db.Column(db.Integer,
                        db.ForeignKey('pets.id', ondelete='cascade'),
                        primary_key=True)
+    
+
+def connect_db(app):
+    """Connect database to Flask app."""
+
+    db.app = app
+    db.init_app(app)
