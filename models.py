@@ -90,7 +90,7 @@ class Pet(db.Model):
     __tablename__ = 'pets'
 
     id = db.Column(db.Integer,
-                   autoincrement=True,
+                   autoincrement=False,
                    primary_key=True)
     
     name = db.Column(db.String,
