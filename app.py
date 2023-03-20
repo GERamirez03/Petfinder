@@ -2,6 +2,7 @@
 
 from flask import Flask, render_template, request, flash, redirect, session, get_flashed_messages, g 
 from flask_debugtoolbar import DebugToolbarExtension
+from sqlalchemy.exc import IntegrityError
 import requests
 
 from models import db, connect_db, User, Organization, Pet, Bookmark
@@ -22,10 +23,13 @@ connect_db(app)
 
 CURRENT_USER_KEY = "current_user"
 
+# TODO: Implement functionality that adds organizations and pets to the local DB WHEN the user bookmarks a pet/organization. 
+
 
 # TODO: If a request is made and then we get a 401 in response, ATTEMPT to generate a new access token AND redirect to the same page/make the same request again with that new access token
 # TODO: Make this process of getting a new access token its own separate function, which also adds the token to the flask session
 # Idea: Only add pets/organizations to Pawprint DB if user bookmarks them?
+# TODO: Navbar which displays logged in user with options to view account/bookmarks/edit account/logout OR login/register if logged out
 
 # Reference: {"type":"https://httpstatus.es/401", "status":401, "title":"Unauthorized", "detail":"Access token invalid or expired"}
 
@@ -95,6 +99,12 @@ def do_login(user):
     # to track logged in user, add their id to the flask session
     session[CURRENT_USER_KEY] = user.id
 
+def do_logout():
+    """Log user out."""
+
+    if CURRENT_USER_KEY in session:
+        del session[CURRENT_USER_KEY]
+
 @app.route('/')
 def generate_token():
     """Generate an access token and redirect to homepage."""
@@ -142,30 +152,58 @@ def signup():
     form = SignUpForm()
 
     if form.validate_on_submit():
-        email = form.email.data
-        username = form.username.data
-        password = form.password.data
-        first_name = form.first_name.data
-        last_name = form.last_name.data
-        location = form.location.data
-        profile_picture_url = form.profile_picture_url.data or User.profile_picture_url.default.arg
+        try:
+            user = User.signup(
+                email = form.email.data,
+                username = form.username.data,
+                password = form.password.data,
+                first_name = form.first_name.data,
+                last_name = form.last_name.data,
+                profile_picture_url = form.profile_picture_url.data or User.profile_picture_url.default.arg,
+                location = form.location.data,
+            )
+            db.session.commit()
 
-        user = User(email=email, username=username, password=password, 
-                    first_name=first_name, last_name=last_name, location=location, 
-                    profile_picture_url=profile_picture_url)
-        
-        db.session.add(user)
-        db.session.commit()
+        except IntegrityError:
+            flash("Username or email already taken", "danger")
+            return render_template('users/signup.html', form=form)
 
         do_login(user)
 
-        flash(f"Welcome to Pawprint, {first_name}!")
+        flash(f"Welcome to Pawprint, {user.first_name}!")
 
         return redirect('/')
+    
     else:
         return render_template('users/signup.html', form=form)
 
-# TODO: Finish user routes and authentication, login/logout/signup stuff... and add to DB
+
+@app.route('/login', methods=["GET", "POST"])
+def login():
+    """Handle user login."""
+
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        user = User.authenticate(form.username.data,
+                                 form.password.data)
+        
+        if user:
+            do_login(user)
+            flash(f"Welcome back, {user.first_name}!", "success")
+            return redirect("/")
+        
+        flash("Invalid credentials.", 'danger')
+
+    return render_template('users/login.html', form=form)
+
+@app.route('/logout')
+def logout():
+    """Handle user logout."""
+
+    do_logout()
+    flash("Logout successful.")
+    return redirect('login')
 
 @app.route('/pets')
 def show_pets():

@@ -37,9 +37,54 @@ class User(db.Model):
     location = db.Column(db.String)
 
     bookmarked_pets = db.relationship('Pet',
-                                      secondary='bookmarks')
+                                      secondary='bookmarks',
+                                      backref='bookmarked_by')
 
     # add authentication, signup, login methods
+
+    @classmethod
+    def signup(cls, email, username, password, first_name, last_name, profile_picture_url, location):
+        """
+        Sign up user.
+        
+        Hashes password to securely add user to Pawprint DB.
+        """
+
+        hashed_password = bcrypt.generate_password_hash(password).decode('UTF-8')
+
+        user = User(
+            email=email,
+            username=username,
+            password=hashed_password,
+            first_name=first_name,
+            last_name=last_name,
+            profile_picture_url=profile_picture_url,
+            location=location,
+        )
+
+        db.session.add(user)
+        return user
+    
+    @classmethod
+    def authenticate(cls, username, password):
+        """
+        Searches for a user with 'username' and checks if the provided password
+        matches that user's password after hashing.
+        
+        Returns the matching User object if successful.
+        
+        If no such user can be found, or the password is incorrect, returns False.
+        """
+
+        user = cls.query.filter_by(username=username).one_or_none()
+
+        if user:
+            is_authenticated = bcrypt.check_password_hash(user.password, password)
+
+            if is_authenticated:
+                return user
+            
+        return False
 
 
 class Organization(db.Model):
@@ -79,7 +124,8 @@ class Organization(db.Model):
     
     image_url = db.Column(db.String)
 
-    pets = db.relationship('Pet')
+    pets = db.relationship('Pet',
+                           backref='organization')
 
     # add methods to help create organization?
 
@@ -127,10 +173,10 @@ class Pet(db.Model):
     organization_id = db.Column(db.String,
                                 db.ForeignKey('organizations.id', ondelete="cascade"))
     
-    organization = db.relationship('Organization')
+    # organization = db.relationship('Organization')
 
-    bookmarked_by = db.relationship('User',
-                                    secondary='bookmarks')
+    # # bookmarked_by = db.relationship('User',
+    #                                 secondary='bookmarks')
 
 
 class Bookmark(db.Model):
