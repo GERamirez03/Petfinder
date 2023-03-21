@@ -10,7 +10,9 @@
 <div>
     <b>{{ pet.name }}</b>
     <img src="{{ pet.primary_photo_cropped.full }}" alt="Image of {{ pet.name }}">
-    <form action="/pets/bookmark/{{pet.id}}" method="post">
+    <form action="/pets/bookmark/{{ pet.id }}" method="post" data-pet_id="{{ pet.id }}" data-organization_id="{{ pet.organization_id}}">
+        <input type="hidden" name="pet_id" value="{{ pet.id }}">
+        <input type="hidden" name="organization_id" value="{{ pet.organization_id}}">
         <button type="submit">Bookmark Pet</button>
     </form>
 </div>

@@ -232,6 +232,7 @@ def show_pets():
 
     return render_template('pets.html', status_code=status_code, pets=pets)
 
+# idea: replace path with pets/bookmark/new and just take out the pet_id in function params bc we use the form anyway...
 @app.route('/pets/bookmark/<int:pet_id>', methods=["POST"])
 def bookmark_pet(pet_id):
     """
@@ -244,8 +245,94 @@ def bookmark_pet(pet_id):
         flash("Please log in to bookmark a pet!", "danger")
         return redirect("/")
     
-    # get the Petfinder API Pet object for that pet
-    # get the Petfinder API Organization object for that pet's organization
+
+    # handle adding the organization first
+    # do we already have the organization locally?
+    organization_id = request.form["organization_id"]
+    organization = Organization.query.get(organization_id)
+
+    if not organization:
+        # if the organization is not registered locally, add it to our local DB before proceeding
+
+        # need all of the organization's info before commiting it to DB
+        url = f"https://api.petfinder.com/v2/organizations/{organization_id}"
+        headers = {"Authorization" : f"Bearer {session['access_token']}"}
+        response = requests.get(url, headers=headers)
+
+        status_code = response.status_code
+        json = response.json()
+
+        petfinder_organization = json.get("organization")
+
+        organization = Organization(
+            id = petfinder_organization.get("id"),
+            name = petfinder_organization.get("name"),
+            email = petfinder_organization.get("email"),
+            phone = petfinder_organization.get("phone"), 
+            address = petfinder_organization.get("address").get("address1"), #CARE
+            city = petfinder_organization.get("address").get("city"), #CARE
+            state = petfinder_organization.get("address").get("state"), #CARE
+            postcode = petfinder_organization.get("address").get("postcode"), #CARE
+            country = petfinder_organization.get("address").get("country"), #CARE
+            url = petfinder_organization.get("url"),
+            image_url = petfinder_organization.get("photos")[0].get("full") #CARE
+        )
+
+        db.session.add(organization)
+        db.session.commit()
+
+    #at this point we have the org in the DB but not the pet
+    pet_id = request.form["pet_id"]
+    pet = Pet.query.get(pet_id)
+
+    # TODO: Idea for a helper function for creating Pawprint DB Organization AND/OR Pet objects:
+    # they accept the pet/org DICT from Petfinder and create the object, return the object if successful, return false if integrity error
+
+    if not pet:
+        # if the pet is not registered on local DB, add it to local DB before creating bookmark
+
+        # need all of the pet's info before commiting it to DB
+        url = f"https://api.petfinder.com/v2/animals/{pet_id}"
+        headers = {"Authorization" : f"Bearer {session['access_token']}"}
+        response = requests.get(url, headers=headers)
+
+        #IDEA for pet creation specifically: have ALL of pet's relevant info as hidden inputs to read off
+
+        status_code = response.status_code
+        json = response.json()
+
+        petfinder_animal = json.get("animal")
+
+        pet = Pet(
+            id = petfinder_animal.get("id"),
+            name = petfinder_animal.get("name"),
+            type = petfinder_animal.get("type"),
+            species = petfinder_animal.get("species"),
+            breed = petfinder_animal.get("breeds").get("primary"),
+            color = petfinder_animal.get("colors").get("primary"),
+            age = petfinder_animal.get("age"),
+            gender = petfinder_animal.get("gender"),
+            size = petfinder_animal.get("size"),
+            status = petfinder_animal.get("status"),
+            description = petfinder_animal.get("description"),
+            image_url = petfinder_animal.get("photos")[0].get("full"),
+            organization_id = petfinder_animal.get("organization_id"),
+        )
+
+        db.session.add(pet)
+        db.session.commit()
+
+    bookmark = Bookmark(user_id=g.user.id, pet_id=pet.id)
+    db.session.add(bookmark)
+    db.session.commit()
+
+    flash(f"Successfully bookmarked {pet.name} to your profile, {g.user.first_name}!")
+
+    return redirect('/pets')
+
+    
+    # get the Petfinder API Pet object for that pet REQURES PET ID
+    # get the Petfinder API Organization object for that pet's organization REQUIRES ORG ID
     # convert and commit the organization to Pawprint DB format
     # convert and commit the pet the the Pawprint DB format
     # create and commit the Bookmark object in Pawprint DB
