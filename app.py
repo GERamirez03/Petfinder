@@ -205,6 +205,20 @@ def logout():
     flash("Logout successful.")
     return redirect('login')
 
+@app.route('/bookmarks')
+def show_bookmarks():
+    """Show bookmarks for the logged in user."""
+
+    if not g.user:
+        flash("Please log in to view your bookmarks!", "danger")
+        return redirect("/")
+    
+    pets = g.user.bookmarked_pets
+
+    return render_template('users/bookmarks.html', pets=pets)
+    
+
+
 @app.route('/pets')
 def show_pets():
     """Show list of pets from Petfinder API."""

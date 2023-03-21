@@ -1,0 +1,33 @@
+{% extends 'base.html' %} 
+
+{% block title %} Bookmarks {% endblock %} 
+
+{% block content %} 
+
+<h2>Bookmarks</h2>
+
+{% for pet in pets %} 
+<div>
+    <b>{{ pet.name }}</b>
+    <img src="{{ pet.image_url }}" alt="Image of {{ pet.name }}">
+    <ul>
+        <li>Type: {{ pet.type }}</li>
+        <li>Species: {{ pet.species }}</li>
+        <li>Breed: {{ pet.breed }}</li>
+        <li>Color: {{ pet.color }}</li>
+        <li>Age: {{ pet.age }}</li>
+        <li>Gender: {{ pet.gender }}</li>
+        <li>Size: {{ pet.size }}</li>
+        <li>Status: {{ pet.status }}</li>
+        <li>Description: {{ pet.description }}</li>
+    </ul>
+    <!-- <form action="/pets/bookmark/{{ pet.id }}" method="post" data-pet_id="{{ pet.id }}" data-organization_id="{{ pet.organization_id}}"> SHOW ORGS ?? NAV BUTTONS/NAVBAR. SEARCH BAR IMPROVEMENTS.
+        <input type="hidden" name="pet_id" value="{{ pet.id }}">
+        <input type="hidden" name="organization_id" value="{{ pet.organization_id}}">
+        <button type="submit">Bookmark Pet</button>
+    </form> -->
+</div>
+
+{% endfor %} 
+
+{% endblock %}
