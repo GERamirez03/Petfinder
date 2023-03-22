@@ -8,8 +8,15 @@
 
 {% for pet in pets %} 
 <div>
-    <b>{{ pet.name }}</b>
-    <img src="{{ pet.primary_photo_cropped.full }}" alt="Image of {{ pet.name }}">
+    <p><b>{{ pet.name }}</b></p>
+
+    {% if pet.primary_photo_cropped %}
+    <!-- <img src="{{ pet.photos[0].get('large')}}" alt="Image of {{ pet.name }}">  -->
+    <img src="{{ pet.primary_photo_cropped.large }}" alt="Image of {{ pet.name }}">
+    {% else %} 
+    <img src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg?20200913095930" alt="No image available for {{ pet.name }}">
+    {% endif %}
+
     <form action="/pets/bookmark/{{ pet.id }}" method="post" data-pet_id="{{ pet.id }}" data-organization_id="{{ pet.organization_id}}">
         <input type="hidden" name="pet_id" value="{{ pet.id }}">
         <input type="hidden" name="organization_id" value="{{ pet.organization_id}}">
@@ -18,5 +25,17 @@
 </div>
 
 {% endfor %} 
+
+<footer>
+    <p>Current Page: <b>{{ pagination.current_page}}</b></p>
+
+    {% if pagination._links.previous %}
+    <p><a href="/pets?page={{ pagination.current_page - 1 }}">Previous</a></p>
+    {% endif %} 
+
+    {% if pagination._links.next %} 
+    <p><a href="/pets?page={{ pagination.current_page + 1 }}">Next</a></p>
+    {% endif %}
+</footer>
 
 {% endblock %}

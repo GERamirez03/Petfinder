@@ -1,7 +1,7 @@
 """WTForms for Pawprint"""
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, URLField
+from wtforms import Form, StringField, PasswordField, URLField, RadioField
 from wtforms.validators import DataRequired, Email, Length, Optional
 
 
@@ -21,3 +21,38 @@ class LoginForm(FlaskForm):
 
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[Length(min=6)])
+
+class SearchForm(FlaskForm):
+    """Form for searching for pets or organizations"""
+
+    search_target = RadioField('Search for: ',
+                               choices=[("pets", "Pets"),
+                                        ("organizations", "Animal Welfare Organizations")],
+                                        validators=[DataRequired()])
+    
+class PetSearchForm(Form):
+    """
+    Subform specific to pet searches.
+    
+    Inherits WTForms base Form class to disable CSRF because
+    this subform is never used by itself.
+    """
+
+    name = StringField('Name')
+    type = StringField('Type') # specify further later
+    breed = StringField('Breed')
+    location = StringField('Location') # specify further later
+
+class OrganizationSearchForm(Form):
+    """
+    Subform specific to organization searches.
+    
+    Inherits WTForms base Form class to disable CSRF because
+    this subform is never used by itself.
+    """
+
+    name = StringField('Organization Name')
+    location = StringField('Location') #specify further later
+    state = StringField('State')
+    country = StringField('Country')
+

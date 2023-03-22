@@ -6,8 +6,10 @@ from sqlalchemy.exc import IntegrityError
 import requests
 
 from models import db, connect_db, User, Organization, Pet, Bookmark
-from forms import SignUpForm, LoginForm
+from forms import SignUpForm, LoginForm, SearchForm
 from secret import MY_API_KEY, MY_SECRET
+
+from wtforms import StringField
 
 app = Flask(__name__)
 
@@ -15,7 +17,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql:///pawprint'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ECHO'] = True
 app.config['SECRET_KEY'] = "geram03_pawprint"
-app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = True
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 debug = DebugToolbarExtension(app)
 
@@ -23,15 +25,24 @@ connect_db(app)
 
 CURRENT_USER_KEY = "current_user"
 
-# TODO: Implement functionality that adds organizations and pets to the local DB WHEN the user bookmarks a pet/organization. 
+# TODO: Loosen data table requirements for organization details due to some organizations not having a phone number, address, etc.
+# TODO: Implement "Follows" for users to follow organizations
+# TODO: Implement Profile section and edit user profile functionality
+# TODO: Clean up Bookmarking functionality, adding organization, pet, bookmark, follow into DB ...
+# TODO: Implement Search Filters, search forms at the top of animals/organizations pages respectively to narrow down results.
+# TODO: Implement Organization profile pages with all information, etc.
+# TODO: Implement Pet profile pages with all information, link to organizaiton, etc.
+# TODO: Add followed organizations to bookmarks with info, link to full profile, etc.
+# TODO: Implement deleting bookmarks/follows to have the D in CRUD: 
+# Create is adding users, pets, orgs. Read is reading bookmarks, follows, pets, orgs, users. Update is users updating profile. Delete is users unbookmarking/unfollowing.
+# TODO: Make the Status of pets more prominent: Adoptable, Found, Adopted?
 
-
-# TODO: If a request is made and then we get a 401 in response, ATTEMPT to generate a new access token AND redirect to the same page/make the same request again with that new access token
-# TODO: Make this process of getting a new access token its own separate function, which also adds the token to the flask session
-# Idea: Only add pets/organizations to Pawprint DB if user bookmarks them?
-# TODO: Navbar which displays logged in user with options to view account/bookmarks/edit account/logout OR login/register if logged out
-
-# Reference: {"type":"https://httpstatus.es/401", "status":401, "title":"Unauthorized", "detail":"Access token invalid or expired"}
+# TODO: STRETCH GOAL is to implement a dynamic WTForms form on the homepage which lets the user toggle between searching for animals or organizations, and then
+# populates a drop-down with a list of potential filters followed by a text input for that filter's value. Also has a "Add another filter" button which would 
+# keep adding filters and text areas.
+# TODO: STRETCH GOAL find a way to ensure that user always has a valid token. If a request fails (401), attempt to resolve it by generating a new token and
+# redirecting to the same page that the user was trying to access. timer, etc.? Could make this process a separate function that adds to flask session
+# For Reference: {"type":"https://httpstatus.es/401", "status":401, "title":"Unauthorized", "detail":"Access token invalid or expired"}
 
 # def create_pets(pets):
 #     """Helper function that accepts a list of pets from Petfinder API and returns a list of Pawprint DB Pet objects."""
@@ -131,13 +142,20 @@ def generate_token():
 
     return redirect('/home')
 
-    # return render_template('home.html', status_code=status_code, text=text, json=json)
-
 @app.route('/home')
 def show_homepage():
     """Show Pawprint homepage with options to search, register, log in."""
 
-    return render_template('homepage.html')
+    # STRETCH GOAL: Dynamic Search form in Homepage
+
+        # class ModifiedSearchForm(SearchForm):
+        #     pass
+
+        # ModifiedSearchForm.username = StringField('username')
+
+    form = SearchForm()
+
+    return render_template('homepage.html', form=form)
 
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
@@ -223,7 +241,9 @@ def show_bookmarks():
 def show_pets():
     """Show list of pets from Petfinder API."""
 
-    url = "https://api.petfinder.com/v2/animals"
+    page = request.args["page"]
+
+    url = f"https://api.petfinder.com/v2/animals?page={page}"
 
     headers = {"Authorization" : f"Bearer {session['access_token']}"}
 
@@ -235,16 +255,27 @@ def show_pets():
     pets = json.get("animals")
     pagination = json.get("pagination")
 
-    # converted_pets = create_pets(pets)
+    return render_template('pets.html', status_code=status_code, pets=pets, pagination=pagination)
 
-    # for pet in pets:
-    #     pawprint_pet = create_pet(pet)
-    #     pawprint_pets.append(pawprint_pet)
-    # for pet in pets
-    # if Pet.query.one_or_none(pet.id) is None:
-    # (construct and commit that pet to the Pawprint DB) TRY Pet.query.get(PK) first and i think that returns None?
+@app.route('/organizations')
+def show_organizations():
+    """Show list of organizations from Petfinder API."""
 
-    return render_template('pets.html', status_code=status_code, pets=pets)
+    page = request.args["page"]
+
+    url = f"https://api.petfinder.com/v2/organizations?page={page}"
+
+    headers = {"Authorization" : f"Bearer {session['access_token']}"}
+
+    response = requests.get(url, headers=headers)
+
+    status_code = response.status_code
+    json = response.json()
+
+    organizations = json.get("organizations")
+    pagination = json.get("pagination")
+
+    return render_template('organizations.html', status_code=status_code, organizations=organizations, pagination=pagination)
 
 # idea: replace path with pets/bookmark/new and just take out the pet_id in function params bc we use the form anyway...
 @app.route('/pets/bookmark/<int:pet_id>', methods=["POST"])
@@ -253,6 +284,8 @@ def bookmark_pet(pet_id):
     Bookmark target pet for logged-in user.
     Adds pet and its organization to Pawprint DB.
     """
+
+    # TODO: If user is NOT logged in/registered, hold on to the animal/shelter they wanted to bookmark and THEN bookmark it for them once they log in/register!
 
     # if the user is logged in
     if not g.user:
@@ -289,7 +322,7 @@ def bookmark_pet(pet_id):
             postcode = petfinder_organization.get("address").get("postcode"), #CARE
             country = petfinder_organization.get("address").get("country"), #CARE
             url = petfinder_organization.get("url"),
-            image_url = petfinder_organization.get("photos")[0].get("full") #CARE
+            image_url = petfinder_organization.get("photos")[0].get("full") if petfinder_organization.get("photos") else "" #CARE
         )
 
         db.session.add(organization)

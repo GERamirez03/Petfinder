@@ -8,6 +8,18 @@
 </head>
 <body>
 
+    <nav>
+        <a href="/">Pawprint</a> || 
+        {% if g.user %} 
+        <a href="/bookmarks">Bookmarks</a> |
+        <a href="/profile">Profile</a> | 
+        <a href="/logout">Logout</a>
+        {% else %} 
+        <a href="/login">Login</a> | 
+        <a href="/signup">Signup</a>
+        {% endif %} 
+    </nav>
+
     <h1>
         Pawprint
     </h1>

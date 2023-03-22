@@ -1,0 +1,38 @@
+{% extends 'base.html' %} 
+
+{% block title %} Animal Welfare Organizations {% endblock %} 
+
+{% block content %} 
+
+<h2>Animal Welfare Organizations</h2>
+
+{% for organization in organizations %} 
+<div>
+    <p><b>{{ organization.name }}</b></p>
+
+    {% if organization.photos[0] %}
+    <img src="{{ organization.photos[0].large }}" alt="Image of {{ organization.name }}">
+    {% else %} 
+    <img src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg?20200913095930" alt="No image available for {{ organization.name }}">
+    {% endif %}
+    <form action="/organizations/follow" method="post" data-organization_id="{{ organization.id}}">
+        <input type="hidden" name="organization_id" value="{{ organization.id}}">
+        <button type="submit">Follow Organization</button>
+    </form>
+</div>
+
+{% endfor %} 
+
+<footer>
+    <p>Current Page: <b>{{ pagination.current_page}}</b></p>
+
+    {% if pagination._links.previous %}
+    <p><a href="/organizations?page={{ pagination.current_page - 1 }}">Previous</a></p>
+    {% endif %} 
+
+    {% if pagination._links.next %} 
+    <p><a href="/organizations?page={{ pagination.current_page + 1 }}">Next</a></p>
+    {% endif %}
+</footer>
+
+{% endblock %}

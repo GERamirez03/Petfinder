@@ -3,12 +3,51 @@
 {% block title %} Pawprint Home {% endblock %} 
 
 {% block content %} 
-<h2>Find your next animal companion to adopt!</h2>
 
-<p><a href="/login">Log In</a></p>
+<h2>Find an animal companion to adopt!</h2>
 
-<p><a href="/signup">Sign Up</a></p>
+<p><a href="/pets?page=1">Find Pets</a></p>
 
-<p><a href="/search">Continue as Guest</a></p>
+<p><a href="/organizations?page=1">Find Animal Welfare Organizations</a></p>
+
+<!-- <form method="POST" id="search_form">
+    {{ form.hidden_tag() }} 
+
+        {% for field in form 
+            if field.widget.input_type != 'hidden' %} 
+
+            {{  field.label }}
+
+            {% for error in field.errors %} 
+                {{ error }}
+            {% endfor %} 
+
+            {% for subfield in field %}  
+            <tr>
+                <td>{{ subfield }}</td>
+                <td>{{ subfield.label }}</td>
+            </tr>
+            {% endfor %}
+
+
+                <br>
+
+        {% endfor %} 
+
+        <button type="submit">Search</button>
+  </form> -->
+<!-- 
+<form action="" method="post">
+    <input type="radio" name="search_target" id="pets" value="pets">
+    <label for="pets">Pets</label>
+    <input type="radio" name="search_target" id="organizations" value="organizations">
+    <label for="organizations">Animal Welfare Organizations</label>
+</form> -->
+
+<!-- <p><a href="/login">Log In</a></p>
+
+<p><a href="/signup">Sign Up</a></p> -->
+
+<!-- <p><a href="/search">Continue as Guest</a></p> -->
 
 {% endblock %} 
