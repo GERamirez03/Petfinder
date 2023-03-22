@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 import requests
 
 from models import db, connect_db, User, Organization, Pet, Bookmark, Follow
-from forms import SignUpForm, LoginForm, EditUserForm, SearchForm
+from forms import SignUpForm, LoginForm, EditUserForm, PetSearchForm
 from secret import MY_API_KEY, MY_SECRET
 
 from wtforms import StringField
@@ -24,6 +24,7 @@ debug = DebugToolbarExtension(app)
 connect_db(app)
 
 CURRENT_USER_KEY = "current_user"
+SEARCH_FORM_KEY = "search_form"
 
 # TODO: Implement Search Filters, search forms at the top of animals/organizations pages respectively to narrow down results.
 
@@ -140,16 +141,7 @@ def generate_token():
 def show_homepage():
     """Show Pawprint homepage with options to search, register, log in."""
 
-    # STRETCH GOAL: Dynamic Search form in Homepage
-
-        # class ModifiedSearchForm(SearchForm):
-        #     pass
-
-        # ModifiedSearchForm.username = StringField('username')
-
-    form = SearchForm()
-
-    return render_template('homepage.html', form=form)
+    return render_template('homepage.html')
 
 @app.route('/signup', methods=["GET", "POST"])
 def signup():
@@ -320,27 +312,50 @@ def remove_follows():
     flash("Follow successfully removed.")
     return redirect('/follows')
     
-
-
-@app.route('/pets')
+@app.route('/pets', methods=["GET", "POST"]) 
 def show_pets():
     """Show list of pets from Petfinder API."""
 
-    page = request.args["page"]
-
-    url = f"https://api.petfinder.com/v2/animals?page={page}"
-
+    url = f"https://api.petfinder.com/v2/animals"
     headers = {"Authorization" : f"Bearer {session['access_token']}"}
+    parameters = {}
 
-    response = requests.get(url, headers=headers)
+    if SEARCH_FORM_KEY in session:
 
+        search_form_dict = session[SEARCH_FORM_KEY]
+        form = PetSearchForm(data=search_form_dict) # use "data" parameter to pre-populate search form all active filters
+        parameters = { key : value for key, value in search_form_dict.items() if value }
+
+    else:
+        form = PetSearchForm()
+
+    if form.validate_on_submit():
+        session[SEARCH_FORM_KEY] = { field.name : field.data for field in form }
+
+        parameters = { field.name : field.data for field in form if field.data }
+
+    parameters["page"] = request.args["page"] if request.args["page"] else 1
+
+    response = requests.get(url, params=parameters, headers=headers)
     status_code = response.status_code
     json = response.json()
-
+        
     pets = json.get("animals")
     pagination = json.get("pagination")
 
-    return render_template('pets.html', status_code=status_code, pets=pets, pagination=pagination)
+    return render_template('pets.html', form=form, status_code=status_code, pets=pets, pagination=pagination)
+    # parameters = request.args
+
+@app.route('/pets/filter', methods=["POST"])
+def filter_pets():
+    """Process pet search form to filter search results."""
+
+    pass
+
+# @app.route('/pets/filter')
+# def show_pets():
+#     pass
+# """ very confused. beacuse refining search should be query parameters right? so i should find a way to make it all one nice page that user can further filter.... !!""" # same with organization search...
 
 @app.route('/organizations')
 def show_organizations():

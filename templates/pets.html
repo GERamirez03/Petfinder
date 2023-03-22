@@ -4,8 +4,31 @@
 
 {% block content %} 
 
-<h2>Pets!</h2>
+<h2>Pets</h2>
 
+<h3>Advanced Search</h3>
+<!-- THIS IS WHERE THE FORM GOES GABRIEL -->
+<form method="POST" id="pet_search_form">
+    {{ form.hidden_tag() }} 
+
+        {% for field in form 
+            if field.widget.input_type != 'hidden' %} 
+
+            <p>
+                {{ field.label }} 
+                {{ field }} 
+
+                {% for error in field.errors %} 
+                    {{ error }}
+                {% endfor %} 
+            </p>
+
+        {% endfor %} 
+
+        <button type="submit">Refine Search</button>
+</form>
+
+<h3>Results</h3>
 {% for pet in pets %} 
 <div>
     <p><b>{{ pet.name }}</b></p>
