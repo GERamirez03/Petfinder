@@ -50,7 +50,7 @@ class OrganizationSearchForm(FlaskForm):
 
     name = StringField('Name (e.g. "Sanctuary" or "Rescue")')
     location = StringField('Location ("[City], [State]"; or "[PostalCode]")')
-    distance = IntegerField('Maximum distance (in number of miles) from Location (Default is 100)')
+    distance = IntegerField('Maximum distance (in number of miles) from Location (Default is 100)', validators=[Optional()])
     state = StringField('State (e.g. "CA" or "NY")')
     country = StringField('Country (e.g. "US" or "CA")')
 

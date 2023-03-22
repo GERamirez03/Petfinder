@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 import requests
 
 from models import db, connect_db, User, Organization, Pet, Bookmark, Follow
-from forms import SignUpForm, LoginForm, EditUserForm, PetSearchForm
+from forms import SignUpForm, LoginForm, EditUserForm, PetSearchForm, OrganizationSearchForm
 from secret import MY_API_KEY, MY_SECRET
 
 from wtforms import StringField
@@ -24,20 +24,21 @@ debug = DebugToolbarExtension(app)
 connect_db(app)
 
 CURRENT_USER_KEY = "current_user"
-SEARCH_FORM_KEY = "search_form"
-
-# TODO: Implement Search Filters, search forms at the top of animals/organizations pages respectively to narrow down results.
+PET_SEARCH_FORM_KEY = "pet_search_form"
+ORGANIZATION_SEARCH_FORM_KEY = "organization_search_form"
 
 # TODO: Clean-up: Bookmarking functionality, adding organization, pet, bookmark, follow into DB ...
 # TODO: Clean-up: Error handling for attempted duplicate data entries for pets, organizations, follows, bookmarks
+# TODO: Clean-up: Bug where query string persists in request but the API call successfully resets....
 
-# TODO: STRETCH GOAL is to implement a dynamic WTForms form on the homepage which lets the user toggle between searching for animals or organizations, and then
+##### STRETCH GOALS #####
+# 1: Implement a dynamic WTForms form on the homepage which lets the user toggle between searching for animals or organizations, and then
 # populates a drop-down with a list of potential filters followed by a text input for that filter's value. Also has a "Add another filter" button which would 
 # keep adding filters and text areas.
-# TODO: STRETCH GOAL find a way to ensure that user always has a valid token. If a request fails (401), attempt to resolve it by generating a new token and
+# 2: Find a way to ensure that user always has a valid token. If a request fails (401), attempt to resolve it by generating a new token and
 # redirecting to the same page that the user was trying to access. timer, etc.? Could make this process a separate function that adds to flask session
 # For Reference: {"type":"https://httpstatus.es/401", "status":401, "title":"Unauthorized", "detail":"Access token invalid or expired"}
-# TODO: STRETCH GOAL implement password reset functionality
+# 3: Implement password reset functionality
 
 # def create_pets(pets):
 #     """Helper function that accepts a list of pets from Petfinder API and returns a list of Pawprint DB Pet objects."""
@@ -320,9 +321,9 @@ def show_pets():
     headers = {"Authorization" : f"Bearer {session['access_token']}"}
     parameters = {}
 
-    if SEARCH_FORM_KEY in session:
+    if PET_SEARCH_FORM_KEY in session:
 
-        search_form_dict = session[SEARCH_FORM_KEY]
+        search_form_dict = session[PET_SEARCH_FORM_KEY]
         form = PetSearchForm(data=search_form_dict) # use "data" parameter to pre-populate search form all active filters
         parameters = { key : value for key, value in search_form_dict.items() if value }
 
@@ -330,7 +331,7 @@ def show_pets():
         form = PetSearchForm()
 
     if form.validate_on_submit():
-        session[SEARCH_FORM_KEY] = { field.name : field.data for field in form }
+        session[PET_SEARCH_FORM_KEY] = { field.name : field.data for field in form }
 
         parameters = { field.name : field.data for field in form if field.data }
 
@@ -346,36 +347,40 @@ def show_pets():
     return render_template('pets.html', form=form, status_code=status_code, pets=pets, pagination=pagination)
     # parameters = request.args
 
-@app.route('/pets/filter', methods=["POST"])
-def filter_pets():
-    """Process pet search form to filter search results."""
-
-    pass
-
-# @app.route('/pets/filter')
-# def show_pets():
-#     pass
-# """ very confused. beacuse refining search should be query parameters right? so i should find a way to make it all one nice page that user can further filter.... !!""" # same with organization search...
-
-@app.route('/organizations')
+@app.route('/organizations', methods=["GET", "POST"])
 def show_organizations():
     """Show list of organizations from Petfinder API."""
 
-    page = request.args["page"]
-
-    url = f"https://api.petfinder.com/v2/organizations?page={page}"
-
+    url = f"https://api.petfinder.com/v2/organizations"
     headers = {"Authorization" : f"Bearer {session['access_token']}"}
+    parameters = {}
 
-    response = requests.get(url, headers=headers)
+    if ORGANIZATION_SEARCH_FORM_KEY in session:
 
+        search_form_dict = session[ORGANIZATION_SEARCH_FORM_KEY]
+        form = OrganizationSearchForm(data=search_form_dict) # use "data" parameter to pre-populate search form all active filters
+        parameters = { key : value for key, value in search_form_dict.items() if value }
+        parameters["page"] = request.args["page"]
+
+    else:
+        form = OrganizationSearchForm()
+
+    if form.validate_on_submit():
+        session[ORGANIZATION_SEARCH_FORM_KEY] = { field.name : field.data for field in form }
+
+        parameters = { field.name : field.data for field in form if field.data }
+        parameters["page"] = 1
+
+    # parameters["page"] = request.args["page"] if request.args["page"] else 1
+
+    response = requests.get(url, params=parameters, headers=headers)
     status_code = response.status_code
     json = response.json()
 
     organizations = json.get("organizations")
     pagination = json.get("pagination")
 
-    return render_template('organizations.html', status_code=status_code, organizations=organizations, pagination=pagination)
+    return render_template('organizations.html', form=form, status_code=status_code, organizations=organizations, pagination=pagination)
 
 @app.route('/organizations/<string:organization_id>')
 def show_organization(organization_id):
