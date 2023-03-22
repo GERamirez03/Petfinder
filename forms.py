@@ -22,6 +22,16 @@ class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[Length(min=6)])
 
+class EditUserForm(FlaskForm):
+    """For for editing user profile"""
+
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    username = StringField('Username', validators=[DataRequired()])
+    first_name = StringField('First Name', validators=[DataRequired()])
+    last_name = StringField('(Optional) Last Name', validators=[Optional()])
+    location = StringField('(Optional) Location', validators=[Optional()])
+    profile_picture_url = URLField('(Optional) Profile Picture URL', validators=[Optional()])
+
 class SearchForm(FlaskForm):
     """Form for searching for pets or organizations"""
 

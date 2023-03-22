@@ -17,6 +17,8 @@
     <img src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg?20200913095930" alt="No image available for {{ pet.name }}">
     {% endif %}
 
+    <p><a href="/pets/{{ pet.id }}">More Details</a></p>
+
     <form action="/pets/bookmark/{{ pet.id }}" method="post" data-pet_id="{{ pet.id }}" data-organization_id="{{ pet.organization_id}}">
         <input type="hidden" name="pet_id" value="{{ pet.id }}">
         <input type="hidden" name="organization_id" value="{{ pet.organization_id}}">

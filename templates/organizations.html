@@ -10,7 +10,7 @@
 <div>
     <p><b>{{ organization.name }}</b></p>
 
-    {% if organization.photos[0] %}
+    {% if organization.photos and organization.photos[0] %}
     <img src="{{ organization.photos[0].large }}" alt="Image of {{ organization.name }}">
     {% else %} 
     <img src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg?20200913095930" alt="No image available for {{ organization.name }}">

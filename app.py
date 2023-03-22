@@ -5,8 +5,8 @@ from flask_debugtoolbar import DebugToolbarExtension
 from sqlalchemy.exc import IntegrityError
 import requests
 
-from models import db, connect_db, User, Organization, Pet, Bookmark
-from forms import SignUpForm, LoginForm, SearchForm
+from models import db, connect_db, User, Organization, Pet, Bookmark, Follow
+from forms import SignUpForm, LoginForm, EditUserForm, SearchForm
 from secret import MY_API_KEY, MY_SECRET
 
 from wtforms import StringField
@@ -25,17 +25,10 @@ connect_db(app)
 
 CURRENT_USER_KEY = "current_user"
 
-# TODO: Loosen data table requirements for organization details due to some organizations not having a phone number, address, etc.
-# TODO: Implement "Follows" for users to follow organizations
-# TODO: Implement Profile section and edit user profile functionality
-# TODO: Clean up Bookmarking functionality, adding organization, pet, bookmark, follow into DB ...
 # TODO: Implement Search Filters, search forms at the top of animals/organizations pages respectively to narrow down results.
-# TODO: Implement Organization profile pages with all information, etc.
-# TODO: Implement Pet profile pages with all information, link to organizaiton, etc.
-# TODO: Add followed organizations to bookmarks with info, link to full profile, etc.
-# TODO: Implement deleting bookmarks/follows to have the D in CRUD: 
-# Create is adding users, pets, orgs. Read is reading bookmarks, follows, pets, orgs, users. Update is users updating profile. Delete is users unbookmarking/unfollowing.
-# TODO: Make the Status of pets more prominent: Adoptable, Found, Adopted?
+
+# TODO: Clean-up: Bookmarking functionality, adding organization, pet, bookmark, follow into DB ...
+# TODO: Clean-up: Error handling for attempted duplicate data entries for pets, organizations, follows, bookmarks
 
 # TODO: STRETCH GOAL is to implement a dynamic WTForms form on the homepage which lets the user toggle between searching for animals or organizations, and then
 # populates a drop-down with a list of potential filters followed by a text input for that filter's value. Also has a "Add another filter" button which would 
@@ -43,6 +36,7 @@ CURRENT_USER_KEY = "current_user"
 # TODO: STRETCH GOAL find a way to ensure that user always has a valid token. If a request fails (401), attempt to resolve it by generating a new token and
 # redirecting to the same page that the user was trying to access. timer, etc.? Could make this process a separate function that adds to flask session
 # For Reference: {"type":"https://httpstatus.es/401", "status":401, "title":"Unauthorized", "detail":"Access token invalid or expired"}
+# TODO: STRETCH GOAL implement password reset functionality
 
 # def create_pets(pets):
 #     """Helper function that accepts a list of pets from Petfinder API and returns a list of Pawprint DB Pet objects."""
@@ -223,6 +217,41 @@ def logout():
     flash("Logout successful.")
     return redirect('login')
 
+@app.route('/profile', methods=["GET", "POST"])
+def show_profile():
+    """Show and edit profile for logged in user."""
+
+    if not g.user:
+        flash("Please log in to view and edit your profile!", "danger")
+        return redirect("/")
+    
+    user = g.user
+    
+    form = EditUserForm(obj=user)
+
+    if form.validate_on_submit():
+
+        try:
+            user.email = form.email.data 
+            user.username = form.username.data 
+            user.first_name = form.first_name.data 
+            user.last_name = form.last_name.data 
+            user.profile_picture_url = form.profile_picture_url.data 
+            user.location = form.location.data 
+            
+            db.session.commit()
+
+        except IntegrityError:
+            flash("Username or email already taken", "danger")
+            return render_template('/profile')
+
+        flash("Profile changes saved successfully.")
+        return redirect('/')
+    
+    else:    
+        return render_template('users/profile.html', form=form)
+
+
 @app.route('/bookmarks')
 def show_bookmarks():
     """Show bookmarks for the logged in user."""
@@ -234,6 +263,62 @@ def show_bookmarks():
     pets = g.user.bookmarked_pets
 
     return render_template('users/bookmarks.html', pets=pets)
+
+@app.route('/bookmarks/remove', methods=["POST"])
+def remove_bookmark():
+    """Remove target bookmark and redirect to bookmarks page."""
+
+    if not g.user:
+        flash("Unauthorized access", "danger")
+        return redirect('/')
+    
+    user_id = g.user.id
+    pet_id = request.form["pet_id"]
+
+    bookmark = Bookmark.query.get((user_id, pet_id))
+    if not bookmark:
+        flash("Bookmark does not exist", "danger")
+        return redirect('/bookmarks')
+    
+    db.session.delete(bookmark)
+    db.session.commit()
+
+    flash("Bookmark successfully removed.")
+    return redirect('/bookmarks')
+
+@app.route('/follows')
+def show_follows():
+    """Show follows for the logged in user."""
+
+    if not g.user:
+        flash("Please log in to view your followed organizations!", "danger")
+        return redirect('/')
+    
+    organizations = g.user.followed_organizations
+
+    return render_template('users/follows.html', organizations=organizations)
+
+@app.route('/follows/remove', methods=["POST"])
+def remove_follows():
+    """Remove target follow and redirect to follows page."""
+
+    if not g.user:
+        flash("Unauthorized access", "danger")
+        return redirect('/')
+    
+    user_id = g.user.id
+    organization_id = request.form["organization_id"]
+
+    follows = Follow.query.get((user_id, organization_id))
+    if not follows:
+        flash("Follow does not exist", "danger")
+        return redirect('/follows')
+    
+    db.session.delete(follows)
+    db.session.commit()
+
+    flash("Follow successfully removed.")
+    return redirect('/follows')
     
 
 
@@ -276,6 +361,36 @@ def show_organizations():
     pagination = json.get("pagination")
 
     return render_template('organizations.html', status_code=status_code, organizations=organizations, pagination=pagination)
+
+@app.route('/organizations/<string:organization_id>')
+def show_organization(organization_id):
+    """Show details page for target organization."""
+
+    url = f"https://api.petfinder.com/v2/organizations/{organization_id}"
+    headers = {"Authorization" : f"Bearer {session['access_token']}"}
+    response = requests.get(url, headers=headers)
+
+    status_code = response.status_code
+    json = response.json()
+
+    organization = json.get("organization")
+
+    return render_template('organization.html', organization=organization)
+    
+@app.route('/pets/<int:pet_id>')
+def show_pet(pet_id):
+    """Show details page for target pet."""
+
+    url = f"https://api.petfinder.com/v2/animals/{pet_id}"
+    headers = {"Authorization" : f"Bearer {session['access_token']}"}
+    response = requests.get(url, headers=headers)
+
+    status_code = response.status_code
+    json = response.json()
+
+    pet = json.get("animal")
+
+    return render_template('pet.html', pet=pet)
 
 # idea: replace path with pets/bookmark/new and just take out the pet_id in function params bc we use the form anyway...
 @app.route('/pets/bookmark/<int:pet_id>', methods=["POST"])
@@ -350,19 +465,23 @@ def bookmark_pet(pet_id):
 
         petfinder_animal = json.get("animal")
 
+
+        color = petfinder_animal.get("colors").get("primary") if petfinder_animal.get("colors").get("primary") else "None listed"
+        image_url = petfinder_animal.get("photos")[0].get("full") if petfinder_animal.get("photos") else None
+
         pet = Pet(
             id = petfinder_animal.get("id"),
             name = petfinder_animal.get("name"),
             type = petfinder_animal.get("type"),
             species = petfinder_animal.get("species"),
             breed = petfinder_animal.get("breeds").get("primary"),
-            color = petfinder_animal.get("colors").get("primary"),
+            color = color,
             age = petfinder_animal.get("age"),
             gender = petfinder_animal.get("gender"),
             size = petfinder_animal.get("size"),
             status = petfinder_animal.get("status"),
             description = petfinder_animal.get("description"),
-            image_url = petfinder_animal.get("photos")[0].get("full"),
+            image_url = image_url,
             organization_id = petfinder_animal.get("organization_id"),
         )
 
@@ -370,12 +489,14 @@ def bookmark_pet(pet_id):
         db.session.commit()
 
     bookmark = Bookmark(user_id=g.user.id, pet_id=pet.id)
-    db.session.add(bookmark)
+    follow = Follow(user_id=g.user.id, organization_id=organization.id)
+    db.session.add_all([bookmark, follow])
+    # db.session.add(bookmark)
     db.session.commit()
 
-    flash(f"Successfully bookmarked {pet.name} to your profile, {g.user.first_name}!")
+    flash(f"Successfully bookmarked {pet.name} and followed {organization.name} for your profile, {g.user.first_name}!")
 
-    return redirect('/pets')
+    return redirect('/pets?page=1')
 
     
     # get the Petfinder API Pet object for that pet REQURES PET ID

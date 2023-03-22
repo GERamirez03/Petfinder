@@ -1,0 +1,43 @@
+{% extends 'base.html' %} 
+
+{% block title %} Pet Details {% endblock %} 
+
+{% block content %} 
+
+<h2>Pet Details for: {{ pet.name }}</h2>
+
+<p>Status: {{ pet.status }}</p>
+{% if pet.primary_photo_cropped %}
+    <img src="{{ pet.primary_photo_cropped.large }}" alt="Image of {{ pet.name }}">
+{% else %} 
+    <img src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg?20200913095930" alt="No image available for {{ pet.name }}">
+{% endif %}
+<p>{{ pet.description }}</p>
+
+<ul>
+    <li>Type: {{ pet.type }}</li>
+    <li>Species: {{ pet.species }}</li>
+    <li>Breed: {{ pet.breed }}</li>
+    <li>Color: {{ pet.colors.primary }}</li>
+    <li>Age: {{ pet.age }}</li>
+    <li>Gender: {{ pet.gender }}</li>
+    <li>Size: {{ pet.size }}</li>
+</ul>
+
+<p><a href="/organizations/{{ pet.organization_id }}">View {{ pet.name }}'s Organization</a></p>
+
+
+
+
+
+<form action="/pets/bookmark/{{ pet.id }}" method="post" data-pet_id="{{ pet.id }}" data-organization_id="{{ pet.organization_id}}">
+    <input type="hidden" name="pet_id" value="{{ pet.id }}">
+    <input type="hidden" name="organization_id" value="{{ pet.organization_id}}">
+    <button type="submit">Bookmark Pet</button>
+</form>
+
+<footer>
+    <p><a href="/">Home</a></p>
+</footer>
+
+{% endblock %}

@@ -39,8 +39,10 @@ class User(db.Model):
     bookmarked_pets = db.relationship('Pet',
                                       secondary='bookmarks',
                                       backref='bookmarked_by')
-
-    # add authentication, signup, login methods
+    
+    followed_organizations = db.relationship('Organization',
+                                             secondary='follows',
+                                             backref='followed_by')
 
     @classmethod
     def signup(cls, email, username, password, first_name, last_name, profile_picture_url, location):
@@ -101,11 +103,9 @@ class Organization(db.Model):
     email = db.Column(db.String,
                       nullable=False)
     
-    phone = db.Column(db.String,
-                      nullable=False)
+    phone = db.Column(db.String)
     
-    address = db.Column(db.String,
-                      nullable=False)
+    address = db.Column(db.String)
     
     city = db.Column(db.String,
                       nullable=False)
@@ -151,8 +151,7 @@ class Pet(db.Model):
     breed = db.Column(db.String,
                       nullable=False)
     
-    color = db.Column(db.String,
-                      nullable=False)
+    color = db.Column(db.String)
     
     age = db.Column(db.String,
                       nullable=False)
@@ -190,6 +189,19 @@ class Bookmark(db.Model):
     
     pet_id = db.Column(db.Integer,
                        db.ForeignKey('pets.id', ondelete='cascade'),
+                       primary_key=True)
+    
+class Follow(db.Model):
+    """Pawprint user 'following' an animal welfare organization."""
+
+    __tablename__ = 'follows'
+
+    user_id = db.Column(db.Integer,
+                        db.ForeignKey('users.id', ondelete='cascade'),
+                        primary_key=True)
+    
+    organization_id = db.Column(db.String,
+                       db.ForeignKey('organizations.id', ondelete='cascade'),
                        primary_key=True)
     
 

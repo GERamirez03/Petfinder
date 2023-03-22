@@ -1,0 +1,43 @@
+{% extends 'base.html' %} 
+
+{% block title %} Animal Welfare Organization Details {% endblock %} 
+
+{% block content %} 
+
+<h2>Animal Welfare Organization Details: <b>{{ organization.name }}</b></h2>
+
+{% if organization.photos and organization.photos[0] %}
+<img src="{{ organization.photos[0].large }}" alt="Image of {{ organization.name }}">
+{% else %} 
+<img src="https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg?20200913095930" alt="No image available for {{ organization.name }}">
+{% endif %}
+
+<ul> Location
+    <li>Address: {{ organization.address.address1 }}</li>
+    <li>City: {{ organization.address.city }}</li>
+    <li>State: {{ organization.address.state }}</li>
+    <li>Postcode: {{ organization.address.postcode }}</li>
+    <li>Country: {{ organization.address.country }}</li>
+</ul>
+
+<ul> Contact
+    <li>Email: {{ organization.email }}</li>
+    <li>Phone: {{ organization.phone }}</li>
+</ul>
+
+{% if organization.url %}
+<p><a href="{{ organization.url}}">{{ organization.name }} Website</a></p>
+{% else %} 
+<p>No URL for {{ organization.name }} found.</p>
+{% endif %}
+
+<form action="/organizations/follow" method="post" data-organization_id="{{ organization.id}}">
+    <input type="hidden" name="organization_id" value="{{ organization.id}}">
+    <button type="submit">Follow Organization</button>
+</form>
+
+<footer>
+    <p><a href="/">Home</a></p>
+</footer>
+
+{% endblock %}
