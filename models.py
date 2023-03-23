@@ -128,6 +128,29 @@ class Organization(db.Model):
                            backref='organization')
 
     # add methods to help create organization?
+    @classmethod
+    def create(cls, petfinder_organization):
+        """
+        Creates a Pawprint DB organization object from
+        a given Petfinder API organization object.
+        """
+
+        organization = Organization(
+            id = petfinder_organization.get("id"),
+            name = petfinder_organization.get("name"),
+            email = petfinder_organization.get("email"),
+            phone = petfinder_organization.get("phone"), 
+            address = petfinder_organization.get("address").get("address1"), #CARE
+            city = petfinder_organization.get("address").get("city"), #CARE
+            state = petfinder_organization.get("address").get("state"), #CARE
+            postcode = petfinder_organization.get("address").get("postcode"), #CARE
+            country = petfinder_organization.get("address").get("country"), #CARE
+            url = petfinder_organization.get("url"),
+            image_url = petfinder_organization.get("photos")[0].get("full") if petfinder_organization.get("photos") else "" #CARE
+        )
+
+        db.session.add(organization)
+        return organization
 
 
 class Pet(db.Model):
@@ -171,6 +194,35 @@ class Pet(db.Model):
 
     organization_id = db.Column(db.String,
                                 db.ForeignKey('organizations.id', ondelete="cascade"))
+    
+    @classmethod
+    def create(cls, petfinder_animal):
+        """
+        Creates a Pawprint DB Pet object from the
+        given Petfinder API Animal object.
+        """
+
+        color = petfinder_animal.get("colors").get("primary") if petfinder_animal.get("colors").get("primary") else "No Color Listed"
+        image_url = petfinder_animal.get("photos")[0].get("full") if petfinder_animal.get("photos") else None
+
+        pet = Pet(
+            id = petfinder_animal.get("id"),
+            name = petfinder_animal.get("name"),
+            type = petfinder_animal.get("type"),
+            species = petfinder_animal.get("species"),
+            breed = petfinder_animal.get("breeds").get("primary"),
+            color = color,
+            age = petfinder_animal.get("age"),
+            gender = petfinder_animal.get("gender"),
+            size = petfinder_animal.get("size"),
+            status = petfinder_animal.get("status"),
+            description = petfinder_animal.get("description"),
+            image_url = image_url,
+            organization_id = petfinder_animal.get("organization_id"),
+        )
+
+        db.session.add(pet)
+        return pet
     
     # organization = db.relationship('Organization')
 

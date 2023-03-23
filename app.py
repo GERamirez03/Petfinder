@@ -27,9 +27,7 @@ CURRENT_USER_KEY = "current_user"
 PET_SEARCH_FORM_KEY = "pet_search_form"
 ORGANIZATION_SEARCH_FORM_KEY = "organization_search_form"
 
-# TODO: Clean-up: Bookmarking functionality, adding organization, pet, bookmark, follow into DB ...
-# TODO: Clean-up: Error handling for attempted duplicate data entries for pets, organizations, follows, bookmarks
-# TODO: Clean-up: Bug where query string persists in request but the API call successfully resets....
+# Known Bug: Query string persists in request after submitting new filter criteria in search while on pages beyond the first.
 
 ##### STRETCH GOALS #####
 # 1: Implement a dynamic WTForms form on the homepage which lets the user toggle between searching for animals or organizations, and then
@@ -39,56 +37,6 @@ ORGANIZATION_SEARCH_FORM_KEY = "organization_search_form"
 # redirecting to the same page that the user was trying to access. timer, etc.? Could make this process a separate function that adds to flask session
 # For Reference: {"type":"https://httpstatus.es/401", "status":401, "title":"Unauthorized", "detail":"Access token invalid or expired"}
 # 3: Implement password reset functionality
-
-# def create_pets(pets):
-#     """Helper function that accepts a list of pets from Petfinder API and returns a list of Pawprint DB Pet objects."""
-
-#     converted_pets = []
-
-#     for pet in pets:
-#         if Pet.query.get(pet.id):
-#             converted_pet = Pet.query.get(pet.id)
-#         else:
-#             converted_pet = Pet(
-#                 id = pet.id,
-#                 name = pet.name,
-#                 type = pet.type,
-#                 species = pet.species,
-#                 breed = pet.breed,
-#                 color = pet.color,
-#                 age = pet.age,
-#                 gender = pet.gender,
-#                 size = pet.size,
-#                 status = pet.status,
-#                 description = pet.description,
-#                 image_url = pet.image_url,
-
-#             )
-
-# def create_organizations(organizations):
-#     """Helper function that accepts a list of organizations from Petfinder API and returns a list of Pawprint DB Organization objects."""
-
-#     converted_organizations = []
-
-#     for organization in organizations:
-#         if Organization.query.get(organization.id):
-#             converted_organization = Organization.query.get(organization.id)
-#         else:
-#             converted_pet = Pet(
-#                 id = pet.id,
-#                 name = pet.name,
-#                 type = pet.type,
-#                 species = pet.species,
-#                 breed = pet.breed,
-#                 color = pet.color,
-#                 age = pet.age,
-#                 gender = pet.gender,
-#                 size = pet.size,
-#                 status = pet.status,
-#                 description = pet.description,
-#                 image_url = pet.image_url,
-
-#             )
 
 
 @app.before_request
@@ -103,7 +51,6 @@ def add_user_to_g():
 def do_login(user):
     """Log in user."""
 
-    # to track logged in user, add their id to the flask session
     session[CURRENT_USER_KEY] = user.id
 
 def do_logout():
@@ -130,7 +77,7 @@ def generate_token():
     text = response.text
     json = response.json()
 
-    access_token = json.get("access_token") # need a new access token every 60min... for now, just have every new session make a new token.
+    access_token = json.get("access_token")
 
     session["access_token"] = access_token
 
@@ -326,6 +273,7 @@ def show_pets():
         search_form_dict = session[PET_SEARCH_FORM_KEY]
         form = PetSearchForm(data=search_form_dict) # use "data" parameter to pre-populate search form all active filters
         parameters = { key : value for key, value in search_form_dict.items() if value }
+        parameters["page"] = request.args["page"] if "page" in request.args else 1
 
     else:
         form = PetSearchForm()
@@ -334,8 +282,7 @@ def show_pets():
         session[PET_SEARCH_FORM_KEY] = { field.name : field.data for field in form }
 
         parameters = { field.name : field.data for field in form if field.data }
-
-    parameters["page"] = request.args["page"] if request.args["page"] else 1
+        parameters["page"] = 1
 
     response = requests.get(url, params=parameters, headers=headers)
     status_code = response.status_code
@@ -360,7 +307,7 @@ def show_organizations():
         search_form_dict = session[ORGANIZATION_SEARCH_FORM_KEY]
         form = OrganizationSearchForm(data=search_form_dict) # use "data" parameter to pre-populate search form all active filters
         parameters = { key : value for key, value in search_form_dict.items() if value }
-        parameters["page"] = request.args["page"]
+        parameters["page"] = request.args["page"] if "page" in request.args else 1
 
     else:
         form = OrganizationSearchForm()
@@ -370,8 +317,6 @@ def show_organizations():
 
         parameters = { field.name : field.data for field in form if field.data }
         parameters["page"] = 1
-
-    # parameters["page"] = request.args["page"] if request.args["page"] else 1
 
     response = requests.get(url, params=parameters, headers=headers)
     status_code = response.status_code
@@ -412,115 +357,80 @@ def show_pet(pet_id):
 
     return render_template('pet.html', pet=pet)
 
-# idea: replace path with pets/bookmark/new and just take out the pet_id in function params bc we use the form anyway...
-@app.route('/pets/bookmark/<int:pet_id>', methods=["POST"])
-def bookmark_pet(pet_id):
+def create_organization(organization_id):
+    """
+    Helper function that accepts an organization ID and makes a request to Petfinder API
+    for all of the organization information to add it to Pawprint DB.
+    """
+
+    url = f"https://api.petfinder.com/v2/organizations/{organization_id}"
+    headers = {"Authorization" : f"Bearer {session['access_token']}"}
+    response = requests.get(url, headers=headers)
+
+    status_code = response.status_code
+    json = response.json()
+    petfinder_organization = json.get("organization")
+
+    organization = Organization.create(petfinder_organization)
+
+    db.session.commit()
+
+    return organization
+
+def create_pet(pet_id):
+    """
+    Helper function that accepts a pet ID and makes a request to Petfinder API
+    for all of the pet details to add it to Pawprint DB.
+    """
+
+    url = f"https://api.petfinder.com/v2/animals/{pet_id}"
+    headers = {"Authorization" : f"Bearer {session['access_token']}"}
+    response = requests.get(url, headers=headers)
+
+
+    status_code = response.status_code
+    json = response.json()
+    petfinder_animal = json.get("animal")
+
+    pet = Pet.create(petfinder_animal)
+    db.session.commit()
+    return pet
+
+@app.route('/pets/bookmark/new', methods=["POST"])
+def bookmark_pet():
     """
     Bookmark target pet for logged-in user.
     Adds pet and its organization to Pawprint DB.
     """
 
-    # TODO: If user is NOT logged in/registered, hold on to the animal/shelter they wanted to bookmark and THEN bookmark it for them once they log in/register!
-
-    # if the user is logged in
     if not g.user:
         flash("Please log in to bookmark a pet!", "danger")
         return redirect("/")
     
-
-    # handle adding the organization first
-    # do we already have the organization locally?
     organization_id = request.form["organization_id"]
     organization = Organization.query.get(organization_id)
 
     if not organization:
-        # if the organization is not registered locally, add it to our local DB before proceeding
+        organization = create_organization(organization_id)
 
-        # need all of the organization's info before commiting it to DB
-        url = f"https://api.petfinder.com/v2/organizations/{organization_id}"
-        headers = {"Authorization" : f"Bearer {session['access_token']}"}
-        response = requests.get(url, headers=headers)
-
-        status_code = response.status_code
-        json = response.json()
-
-        petfinder_organization = json.get("organization")
-
-        organization = Organization(
-            id = petfinder_organization.get("id"),
-            name = petfinder_organization.get("name"),
-            email = petfinder_organization.get("email"),
-            phone = petfinder_organization.get("phone"), 
-            address = petfinder_organization.get("address").get("address1"), #CARE
-            city = petfinder_organization.get("address").get("city"), #CARE
-            state = petfinder_organization.get("address").get("state"), #CARE
-            postcode = petfinder_organization.get("address").get("postcode"), #CARE
-            country = petfinder_organization.get("address").get("country"), #CARE
-            url = petfinder_organization.get("url"),
-            image_url = petfinder_organization.get("photos")[0].get("full") if petfinder_organization.get("photos") else "" #CARE
-        )
-
-        db.session.add(organization)
-        db.session.commit()
-
-    #at this point we have the org in the DB but not the pet
     pet_id = request.form["pet_id"]
     pet = Pet.query.get(pet_id)
 
-    # TODO: Idea for a helper function for creating Pawprint DB Organization AND/OR Pet objects:
-    # they accept the pet/org DICT from Petfinder and create the object, return the object if successful, return false if integrity error
-
     if not pet:
-        # if the pet is not registered on local DB, add it to local DB before creating bookmark
+        pet = create_pet(pet_id)
 
-        # need all of the pet's info before commiting it to DB
-        url = f"https://api.petfinder.com/v2/animals/{pet_id}"
-        headers = {"Authorization" : f"Bearer {session['access_token']}"}
-        response = requests.get(url, headers=headers)
+    bookmark = Bookmark.query.get((g.user.id, pet.id))
+    if not bookmark:
+        bookmark = Bookmark(user_id=g.user.id, pet_id=pet.id)
+        db.session.add(bookmark)
 
-        #IDEA for pet creation specifically: have ALL of pet's relevant info as hidden inputs to read off
+    follow = Follow.query.get((g.user.id, organization.id))
+    if not follow:
+        follow = Follow(user_id=g.user.id, organization_id=organization.id)
+        db.session.add(follow)
 
-        status_code = response.status_code
-        json = response.json()
-
-        petfinder_animal = json.get("animal")
-
-
-        color = petfinder_animal.get("colors").get("primary") if petfinder_animal.get("colors").get("primary") else "None listed"
-        image_url = petfinder_animal.get("photos")[0].get("full") if petfinder_animal.get("photos") else None
-
-        pet = Pet(
-            id = petfinder_animal.get("id"),
-            name = petfinder_animal.get("name"),
-            type = petfinder_animal.get("type"),
-            species = petfinder_animal.get("species"),
-            breed = petfinder_animal.get("breeds").get("primary"),
-            color = color,
-            age = petfinder_animal.get("age"),
-            gender = petfinder_animal.get("gender"),
-            size = petfinder_animal.get("size"),
-            status = petfinder_animal.get("status"),
-            description = petfinder_animal.get("description"),
-            image_url = image_url,
-            organization_id = petfinder_animal.get("organization_id"),
-        )
-
-        db.session.add(pet)
-        db.session.commit()
-
-    bookmark = Bookmark(user_id=g.user.id, pet_id=pet.id)
-    follow = Follow(user_id=g.user.id, organization_id=organization.id)
-    db.session.add_all([bookmark, follow])
-    # db.session.add(bookmark)
     db.session.commit()
 
     flash(f"Successfully bookmarked {pet.name} and followed {organization.name} for your profile, {g.user.first_name}!")
 
-    return redirect('/pets?page=1')
-
-    
-    # get the Petfinder API Pet object for that pet REQURES PET ID
-    # get the Petfinder API Organization object for that pet's organization REQUIRES ORG ID
-    # convert and commit the organization to Pawprint DB format
-    # convert and commit the pet the the Pawprint DB format
-    # create and commit the Bookmark object in Pawprint DB
+    return redirect('/pets')
