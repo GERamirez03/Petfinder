@@ -2,9 +2,13 @@
 
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
+from secret import MY_API_KEY, MY_SECRET
 
 bcrypt = Bcrypt()
 db = SQLAlchemy()
+
+hashed_api_key = bcrypt.generate_password_hash(MY_API_KEY).decode('UTF-8')
+hashed_secret = bcrypt.generate_password_hash(MY_SECRET).decode('UTF-8')
 
 class User(db.Model):
     """Pawprint user."""
