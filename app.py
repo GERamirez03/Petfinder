@@ -27,15 +27,6 @@ CURRENT_USER_KEY = "current_user"
 PET_SEARCH_FORM_KEY = "pet_search_form"
 ORGANIZATION_SEARCH_FORM_KEY = "organization_search_form"
 
-# Goals with Bootstrap:
-# 1: Make the forms pretty
-# 2: Make the forms responsive - potentially implement my original stretch goal with drop-downs, buttons that alternace, etc.?
-# 3: general beautification
-# 4: incorporate animal and org pics into more of the website -- homepage, etc. ???
-# 5: Make search results pages pretty... cards? responsive columns/grids?
-# 6: incorporate alignment and justifying
-# 7: FORMS & NAVBARS
-
 # Known Bug: Query string persists in request after submitting new filter criteria in search while on pages beyond the first.
 
 ##### STRETCH GOALS #####
@@ -90,7 +81,7 @@ def generate_token():
 
     session["access_token"] = access_token
 
-    flash("Access token generated!", "info")
+    flash("Access token generated!")
 
     return redirect('/home')
 
@@ -131,7 +122,7 @@ def signup():
 
         do_login(user)
 
-        flash(f"Welcome to Pawprint, {user.first_name}!", "success")
+        flash(f"Welcome to Pawprint, {user.first_name}!")
 
         return redirect('/')
     
@@ -151,10 +142,10 @@ def login():
         
         if user:
             do_login(user)
-            flash(f"Welcome back, {user.first_name}!", "primary")
+            flash(f"Welcome back, {user.first_name}!", "success")
             return redirect("/")
         
-        flash("Invalid credentials.", 'warning')
+        flash("Invalid credentials.", 'danger')
 
     return render_template('users/login.html', form=form)
 
@@ -163,7 +154,7 @@ def logout():
     """Handle user logout."""
 
     do_logout()
-    flash("Logout successful.", "info")
+    flash("Logout successful.")
     return redirect('login')
 
 @app.route('/profile', methods=["GET", "POST"])
@@ -171,7 +162,7 @@ def show_profile():
     """Show and edit profile for logged in user."""
 
     if not g.user:
-        flash("Please log in to view and edit your profile!", "warning")
+        flash("Please log in to view and edit your profile!", "danger")
         return redirect("/")
     
     user = g.user
@@ -191,10 +182,10 @@ def show_profile():
             db.session.commit()
 
         except IntegrityError:
-            flash("Username or email already taken.", "danger")
+            flash("Username or email already taken", "danger")
             return render_template('/profile')
 
-        flash("Profile changes saved successfully.", "success")
+        flash("Profile changes saved successfully.")
         return redirect('/')
     
     else:    
@@ -206,7 +197,7 @@ def show_bookmarks():
     """Show bookmarks for the logged in user."""
 
     if not g.user:
-        flash("Please log in to view your bookmarks!", "warning")
+        flash("Please log in to view your bookmarks!", "danger")
         return redirect("/")
     
     pets = g.user.bookmarked_pets
@@ -226,13 +217,13 @@ def remove_bookmark():
 
     bookmark = Bookmark.query.get((user_id, pet_id))
     if not bookmark:
-        flash("Bookmark does not exist", "warning")
+        flash("Bookmark does not exist", "danger")
         return redirect('/bookmarks')
     
     db.session.delete(bookmark)
     db.session.commit()
 
-    flash("Bookmark successfully removed.", "success")
+    flash("Bookmark successfully removed.")
     return redirect('/bookmarks')
 
 @app.route('/follows')
@@ -240,7 +231,7 @@ def show_follows():
     """Show follows for the logged in user."""
 
     if not g.user:
-        flash("Please log in to view your followed organizations!", "warning")
+        flash("Please log in to view your followed organizations!", "danger")
         return redirect('/')
     
     organizations = g.user.followed_organizations
@@ -260,13 +251,13 @@ def remove_follows():
 
     follows = Follow.query.get((user_id, organization_id))
     if not follows:
-        flash("Follow does not exist", "warning")
+        flash("Follow does not exist", "danger")
         return redirect('/follows')
     
     db.session.delete(follows)
     db.session.commit()
 
-    flash("Follow successfully removed.", "success")
+    flash("Follow successfully removed.")
     return redirect('/follows')
     
 @app.route('/pets', methods=["GET", "POST"]) 
@@ -413,7 +404,7 @@ def bookmark_pet():
     """
 
     if not g.user:
-        flash("Please log in to bookmark a pet!", "warning")
+        flash("Please log in to bookmark a pet!", "danger")
         return redirect("/")
     
     organization_id = request.form["organization_id"]
@@ -440,6 +431,6 @@ def bookmark_pet():
 
     db.session.commit()
 
-    flash(f"Successfully saved {pet.name} from {organization.name} to your profile, {g.user.first_name}!", "success")
+    flash(f"Successfully bookmarked {pet.name} and followed {organization.name} for your profile, {g.user.first_name}!")
 
     return redirect('/pets')
