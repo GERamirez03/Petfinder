@@ -1,9 +1,9 @@
-"""Organization model tests."""
+"""Pet model tests."""
 
 import os
 from unittest import TestCase
 
-from models import db, Organization
+from models import db, Pet, Organization
 from sqlalchemy.exc import IntegrityError
 
 #set environmental variable to be a test db
@@ -14,14 +14,14 @@ from app import app
 db.drop_all()
 db.create_all()
 
-class OrganizationModelTestCase(TestCase):
-    """Test model for organizations."""
+class PetModelTestCase(TestCase):
+    """Test model for pets."""
 
     def setUp(self):
         """Create test client."""
 
         db.session.rollback()
-        Organization.query.delete()
+        Pet.query.delete()
 
         self.client = app.test_client()
         app.testing=True
@@ -35,8 +35,10 @@ class OrganizationModelTestCase(TestCase):
         db.session.rollback()
         self.app_context.pop()
 
-    def test_organization_model(self):
-        """Does the basic Organization model work?"""
+    def test_pet_model(self):
+        """Does the basic Pet model work?"""
+
+        # need a test organization to reference in Pet organization_id Foreign Key column
 
         organization = Organization(
             id="TEST-0",
@@ -52,55 +54,96 @@ class OrganizationModelTestCase(TestCase):
         db.session.add(organization)
         db.session.commit()
 
-        # Organization should have no pets or followed_by
-        self.assertEqual(len(organization.pets), 0)
-        self.assertEqual(len(organization.followed_by), 0)
+        # create and commit a test pet
+
+        pet = Pet(
+            id=11037,
+            name="Test Pet",
+            type="Test",
+            species="Test",
+            breed="Beta",
+            age="Newborn",
+            gender="Unknown",
+            size="Small",
+            status="Unavailable",
+            organization_id="TEST-0"
+        )
+
+        db.session.add(pet)
+        db.session.commit()
+
+        # Pet should have no bookmarked_by
+        self.assertEqual(len(pet.bookmarked_by), 0)
+
+        # Pet should have organization_id of the test organization AND organization of test organization
+        self.assertEqual(pet.organization_id, "TEST-0")
+        self.assertEqual(pet.organization, organization)
     
-    def test_organization_create(self):
+    def test_pet_create(self):
         """
-        Does Organization.create successfully create a new Organization given
+        Does Pet.create successfully create a new Pet given
         valid information and fail to create one if any validations fail?
         """
 
-        organization_data = {
-            "id":"TEST-0",
-            "name":"Test Organization",
-            "email":"test@organization.org",
-            "address":{
-                "city":"Test City",
-                "state":"Test State",
-                "postcode":"TEST-CODE",
-                "country":"Test Country"
-            },
-            "url":"https://google.com",
-        }
+        # need a test organization to reference in Pet organization_id Foreign Key column
 
-        # create and commit an organization with necessary information
-        good_organization = Organization.create(organization_data)
+        organization = Organization(
+            id="TEST-0",
+            name="Test Organization",
+            email="test@organization.org",
+            city="Test City",
+            state="Test State",
+            postcode="TEST-CODE",
+            country="Test Country",
+            url="https://google.com"
+        )
 
-        db.session.add(good_organization)
+        db.session.add(organization)
         db.session.commit()
 
-        # good_organization should be an instance of Organization and be in Organization.query.all()
-
-        self.assertIsInstance(good_organization, Organization)
-        self.assertIn(good_organization, Organization.query.all())
-
-        # create and commit an organization WITHOUT the necessary information: no city
-        organization_data = {
-            "id":"TEST-0",
-            "name":"Test Organization",
-            "email":"test@organization.org",
-            "address":{
-                # No city
-                "state":"Test State",
-                "postcode":"TEST-CODE",
-                "country":"Test Country"
-            },
-            "url":"https://google.com",
+        pet_data = {
+            "id":11037,
+            "name":"Test Pet",
+            "type":"Test",
+            "species":"Test",
+            "breeds": {
+                "primary":"Beta",
+                },
+            "age":"Newborn",
+            "gender":"Unknown",
+            "size":"Small",
+            "status":"Unavailable",
+            "organization_id":"TEST-0"
         }
-        bad_organization = Organization.create(organization_data)
 
-        # attempting to commit bad_organization should raise an IntegrityError exception
-        db.session.add(bad_organization)
+        # create and commit a pet with necessary information
+        good_pet = Pet.create(pet_data)
+
+        db.session.add(good_pet)
+        db.session.commit()
+
+        # good_pet should be an instance of Pet and be in Pet.query.all()
+
+        self.assertIsInstance(good_pet, Pet)
+        self.assertIn(good_pet, Pet.query.all())
+
+        # create and commit a pet WITHOUT the necessary information: no name
+        pet_data = {
+            "id":11037,
+            # no name
+            "type":"Test",
+            "species":"Test",
+            "breeds": {
+                "primary":"Beta",
+                },
+            "age":"Newborn",
+            "gender":"Unknown",
+            "size":"Small",
+            "status":"Unavailable",
+            "organization_id":"TEST-0"
+        }
+        bad_pet = Pet.create(pet_data)
+
+        # attempting to commit bad_pet should raise an IntegrityError exception
+        db.session.add(bad_pet)
         self.assertRaises(IntegrityError, db.session.commit)
